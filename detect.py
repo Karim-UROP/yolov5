@@ -33,6 +33,11 @@ class Boundary:
         self.top_left = top_left
         self.bottom_right = bottom_right
 
+    def get_midpoint(self):
+        mid_x = (self.top_left[0] + self.bottom_right[0]) / 2
+        mid_y = (self.top_left[1] + self.bottom_right[1]) / 2
+        return mid_x, mid_y
+
 
 @torch.no_grad()
 def run(weights='yolov5s.pt',  # model.pt path(s)
@@ -65,7 +70,7 @@ def run(weights='yolov5s.pt',  # model.pt path(s)
         ('rtsp://', 'rtmp://', 'http://', 'https://'))
 
     # For returning all boxes
-    boundaries: list[Boundary] = []
+    midpoints: list[tuple[float, float]] = []
 
     # Directories
     save_dir = increment_path(Path(project) / name, exist_ok=exist_ok)  # increment run
@@ -152,7 +157,7 @@ def run(weights='yolov5s.pt',  # model.pt path(s)
                 for *xyxy, conf, cls in reversed(det):
                     c1, c2 = (int(xyxy[0]), int(xyxy[1])), (int(xyxy[2]), int(xyxy[3]))
                     new_boundary = Boundary(c1, c2)
-                    boundaries.append(new_boundary)
+                    midpoints.append(new_boundary.get_midpoint())
 
                     if save_txt:  # Write to file
                         xywh = (xyxy2xywh(torch.tensor(xyxy).view(1, 4)) / gn).view(-1).tolist()  # normalized xywh
@@ -202,7 +207,7 @@ def run(weights='yolov5s.pt',  # model.pt path(s)
         strip_optimizer(weights)  # update model (to fix SourceChangeWarning)
 
     print(f'Done. ({time.time() - t0:.3f}s)')
-    return boundaries
+    return midpoints
 
 
 def parse_opt():

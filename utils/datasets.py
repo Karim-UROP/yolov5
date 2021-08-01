@@ -13,6 +13,8 @@ from multiprocessing.pool import ThreadPool, Pool
 from pathlib import Path
 from threading import Thread
 
+import base64
+import io
 import cv2
 import numpy as np
 import torch
@@ -152,21 +154,28 @@ class _RepeatSampler(object):
 
 
 class LoadImages:  # for inference
-    def __init__(self, path, img_size=640, stride=32):
-        p = str(Path(path).absolute())  # os-agnostic absolute path
-        if '*' in p:
-            files = sorted(glob.glob(p, recursive=True))  # glob
-        elif os.path.isdir(p):
-            files = sorted(glob.glob(os.path.join(p, '*.*')))  # dir
-        elif os.path.isfile(p):
-            files = [p]  # files
-        else:
-            raise Exception(f'ERROR: {p} does not exist')
+    def __init__(self, path, img_size=640, stride=32, base64_imgs = []):
+        if base64_imgs != []:
+            videos = []
+            images = base64_imgs
 
-        images = [x for x in files if x.split('.')[-1].lower() in IMG_FORMATS]
-        videos = [x for x in files if x.split('.')[-1].lower() in VID_FORMATS]
+        else:
+            p = str(Path(path).absolute())  # os-agnostic absolute path
+            if '*' in p:
+                files = sorted(glob.glob(p, recursive=True))  # glob
+            elif os.path.isdir(p):
+                files = sorted(glob.glob(os.path.join(p, '*.*')))  # dir
+            elif os.path.isfile(p):
+                files = [p]  # files
+            else:
+                raise Exception(f'ERROR: {p} does not exist')
+
+            images = [x for x in files if x.split('.')[-1].lower() in IMG_FORMATS]
+            videos = [x for x in files if x.split('.')[-1].lower() in VID_FORMATS]
+
         ni, nv = len(images), len(videos)
 
+        self.base64 = base64_imgs != []
         self.img_size = img_size
         self.stride = stride
         self.files = images + videos
@@ -209,7 +218,12 @@ class LoadImages:  # for inference
         else:
             # Read image
             self.count += 1
-            img0 = cv2.imread(path)  # BGR
+            if self.base64:
+                imgdata = base64.b64decode(path)
+                im = Image.open(io.BytesIO(imgdata))
+                img0 = cv2.cvtColor(np.array(im), cv2.COLOR_BGR2RGB)
+            else:
+                img0 = cv2.imread(path)  # BGR
             assert img0 is not None, 'Image Not Found ' + path
             print(f'image {self.count}/{self.nf} {path}: ', end='')
 

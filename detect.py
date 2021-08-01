@@ -64,6 +64,7 @@ def run(weights='yolov5s.pt',  # model.pt path(s)
         hide_labels=False,  # hide labels
         hide_conf=False,  # hide confidences
         half=False,  # use FP16 half-precision inference
+        base64_imgs=[], #for use with api
         ):
     save_img = not nosave and not source.endswith('.txt')  # save inference images
     webcam = source.isnumeric() or source.endswith('.txt') or source.lower().startswith(
@@ -101,6 +102,10 @@ def run(weights='yolov5s.pt',  # model.pt path(s)
         cudnn.benchmark = True  # set True to speed up constant image size inference
         dataset = LoadStreams(source, img_size=imgsz, stride=stride)
         bs = len(dataset)  # batch_size
+    elif base64_imgs != []:
+        dataset = LoadImages(source, img_size=imgsz, stride=stride, base64_imgs=base64_imgs)
+        bs = 1
+
     else:
         dataset = LoadImages(source, img_size=imgsz, stride=stride)
         bs = 1  # batch_size
